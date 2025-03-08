@@ -1,0 +1,7 @@
+[gd_scene load_steps=2 format=3 uid="uid://de5ch8siccy8w"]
+
+[ext_resource type="PackedScene" uid="uid://juxnwnsdvdnc" path="res://characters/test_character.tscn" id="1_6fn5n"]
+
+[node name="Node2D" type="Node2D"]
+
+[node name="CharacterBody2D" parent="." instance=ExtResource("1_6fn5n")]

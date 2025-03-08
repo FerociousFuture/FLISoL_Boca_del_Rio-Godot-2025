@@ -1,14 +1,17 @@
-[gd_scene load_steps=3 format=3 uid="uid://juxnwnsdvdnc"]
+[gd_scene load_steps=4 format=3 uid="uid://juxnwnsdvdnc"]
 
 [ext_resource type="Texture2D" uid="uid://cxffhs0fhvuqm" path="res://icon.svg" id="1_c1sjo"]
+[ext_resource type="Script" path="res://scripts/test_script.gd" id="1_r1ndd"]
 
-[sub_resource type="CircleShape2D" id="CircleShape2D_d7wfb"]
-radius = 77.026
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_hnqik"]
+size = Vector2(116, 119)
 
 [node name="CharacterBody2D" type="CharacterBody2D"]
+script = ExtResource("1_r1ndd")
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="."]
-shape = SubResource("CircleShape2D_d7wfb")
+position = Vector2(0, 0.5)
+shape = SubResource("RectangleShape2D_hnqik")
 
 [node name="Sprite2D" type="Sprite2D" parent="."]
 texture = ExtResource("1_c1sjo")
