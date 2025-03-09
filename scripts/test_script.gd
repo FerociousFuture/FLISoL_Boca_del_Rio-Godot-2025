@@ -6,9 +6,16 @@ const SPEED = 500.0
 # Referencia al Sprite2D
 @onready var sprite = $Sprite2D
 
+# En el script del personaje
+func _process(delta: float) -> void:
+	var character_global_position = global_position
+	print("Posición global del personaje: ", character_global_position)
+
 func _physics_process(delta: float) -> void:
 	# Reiniciar la velocidad en cada frame
 	velocity = Vector2.ZERO
+	
+
 
 	# Detectar entrada del usuario
 	if Input.is_action_pressed("Derecha"):
