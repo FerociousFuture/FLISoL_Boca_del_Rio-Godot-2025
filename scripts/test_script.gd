@@ -1,9 +1,9 @@
 extends CharacterBody2D
 
 # Velocidad de movimiento del personaje
-const SPEED = 300.0
+const SPEED = 500.0
 
-# Referencia al AnimatedSprite2D
+# Referencia al Sprite2D
 @onready var sprite = $Sprite2D
 
 func _physics_process(delta: float) -> void:
@@ -11,31 +11,28 @@ func _physics_process(delta: float) -> void:
 	velocity = Vector2.ZERO
 
 	# Detectar entrada del usuario
-	if Input.is_action_pressed("ui_right"):
+	if Input.is_action_pressed("Derecha"):
 		velocity.x += 1
-	if Input.is_action_pressed("ui_left"):
+	if Input.is_action_pressed("Izquierda"):
 		velocity.x -= 1
-	if Input.is_action_pressed("ui_down"):
+	if Input.is_action_pressed("Abajo"):
 		velocity.y += 1
-	if Input.is_action_pressed("ui_up"):
+	if Input.is_action_pressed("Arriba"):
 		velocity.y -= 1
 
 	# Normalizar el vector de movimiento para evitar que se mueva más rápido en diagonal
 	if velocity.length() > 0:
 		velocity = velocity.normalized() * SPEED
 
-		# Reproducir animación según la dirección
+		# Rotar el sprite según la dirección del movimiento
 		if velocity.x > 0:
-			sprite.play("Arriba")
+			sprite.rotation_degrees = 0  # Mirando a la derecha
 		elif velocity.x < 0:
-			sprite.play("Abajo")
+			sprite.rotation_degrees = 180  # Mirando a la izquierda
 		elif velocity.y > 0:
-			sprite.play("Izquierda")
+			sprite.rotation_degrees = 90  # Mirando hacia abajo
 		elif velocity.y < 0:
-			sprite.play("Derecha")
-	else:
-		# Detener la animación si no hay movimiento
-		sprite.stop()
+			sprite.rotation_degrees = 270  # Mirando hacia arriba
 
 	# Mover al personaje usando move_and_slide
 	move_and_slide()
