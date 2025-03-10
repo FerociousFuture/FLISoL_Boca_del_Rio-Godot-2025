@@ -1,7 +1,7 @@
 extends CharacterBody2D
 
 # Velocidad de movimiento del personaje
-const SPEED = 500.0
+const SPEED = 550
 
 # Referencia al Sprite2D
 @onready var sprite = $Sprite2D
@@ -9,7 +9,6 @@ const SPEED = 500.0
 # En el script del personaje
 func _process(delta: float) -> void:
 	var character_global_position = global_position
-	print("Posición global del personaje: ", character_global_position)
 
 func _physics_process(delta: float) -> void:
 	# Reiniciar la velocidad en cada frame

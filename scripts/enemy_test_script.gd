@@ -1,8 +1,9 @@
 extends CharacterBody2D
 
 # Velocidad y aceleración del enemigo
-var speed = 300
+var speed = 400
 var accel = 7
+var move_flag = true
 
 # Referencia al NavigationAgent2D
 @onready var nav = $NavigationAgent2D
@@ -28,6 +29,7 @@ func _physics_process(delta):
 		return
 
 	# Actualizar la posición objetivo del NavigationAgent2D
+	
 	nav.target_position = player.global_position
 
 	# Verificar si hay una ruta válida
@@ -44,4 +46,10 @@ func _physics_process(delta):
 	velocity = velocity.lerp(direction * speed, accel * delta)
 
 	# Mover al enemigo usando move_and_slide
-	move_and_slide()
+	if Input.is_action_pressed("run"):
+		move_flag = true
+	if Input.is_action_just_pressed("Stop"):
+		move_flag = false
+		
+	if move_flag == true:
+		move_and_slide()
