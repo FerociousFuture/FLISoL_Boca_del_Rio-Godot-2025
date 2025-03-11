@@ -23,33 +23,26 @@ func _ready():
 	is_nav_ready = true
 	nav.target_position = player.global_position
 
-func _physics_process(delta):
-	# Si el NavigationAgent2D no está listo, no hacer nada
-	if not is_nav_ready:
-		return
-
+func _process(delta):
 	# Actualizar la posición objetivo del NavigationAgent2D
-	
 	nav.target_position = player.global_position
 
-	# Verificar si hay una ruta válida
-	if nav.is_navigation_finished():
-		return
-
-	# Obtener la siguiente posición en la ruta
-	var next_path_position = nav.get_next_path_position()
-
-	# Calcular la dirección hacia la siguiente posición
-	var direction = (next_path_position - global_position).normalized()
-
-	# Suavizar el movimiento usando lerp
-	velocity = velocity.lerp(direction * speed, accel * delta)
-
-	# Mover al enemigo usando move_and_slide
+	# Manejar la entrada del usuario
 	if Input.is_action_pressed("run"):
 		move_flag = true
 	if Input.is_action_just_pressed("Stop"):
 		move_flag = false
-		
-	if move_flag == true:
+
+func _physics_process(delta):
+	if not is_nav_ready:
+		return
+
+	if nav.is_navigation_finished():
+		return
+
+	var next_path_position = nav.get_next_path_position()
+	var direction = (next_path_position - global_position).normalized()
+	velocity = velocity.lerp(direction * speed, accel * delta)
+
+	if move_flag:
 		move_and_slide()
