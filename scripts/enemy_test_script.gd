@@ -30,12 +30,20 @@ var wall_detected = false
 # Variable para verificar si el jugador está dentro del cono de visión
 var player_in_cone = false
 
+# Última posición conocida del jugador
+var last_known_player_position: Vector2 = Vector2.ZERO
+
 # Forma del cono (se crea una sola vez)
 var cone_shape: ConvexPolygonShape2D
 
 # Ángulo de rotación del cono de visión
 var cone_rotation_angle = 0.0
 var cone_rotation_speed = 1.0  # Velocidad de rotación del cono
+
+# Variables para el comportamiento errático
+var erratic_timer: float = 0.0
+var erratic_direction: Vector2 = Vector2.ZERO
+var erratic_interval: float = 2.0  # Intervalo de cambio de dirección
 
 func _ready():
 	# Configurar el NavigationAgent2D
@@ -122,33 +130,49 @@ func _physics_process(delta):
 		shape_cast.look_at(player.global_position)
 		vision_cone.look_at(player.global_position)
 		
+		# Guardar la última posición conocida del jugador
+		last_known_player_position = player.global_position
+		
 		# Cambiar el color del cono a rojo
 		vision_cone.color = Color.RED
 	else:
-		# Rotar el cono de visión si no hay detección
-		cone_rotation_angle += cone_rotation_speed * delta
-		shape_cast.global_rotation = cone_rotation_angle
-		vision_cone.global_rotation = cone_rotation_angle
+		# Si el jugador no está en el cono, mantener la dirección hacia la última posición conocida
+		if last_known_player_position != Vector2.ZERO:
+			shape_cast.look_at(last_known_player_position)
+			vision_cone.look_at(last_known_player_position)
+		else:
+			# Rotar el cono de visión si no hay detección ni última posición conocida
+			cone_rotation_angle += cone_rotation_speed * delta
+			shape_cast.global_rotation = cone_rotation_angle
+			vision_cone.global_rotation = cone_rotation_angle
 		
 		# Cambiar el color del cono a amarillo
-		vision_cone.color = Color.YELLOW
+		vision_cone.color = Color.GREEN
 
 	# Comportamiento del enemigo
 	if player_in_cone and not wall_detected:
 		# Si el jugador está en el cono y no hay pared, seguir al jugador
-		nav.target_position = player.global_position
-
-		if nav.is_navigation_finished():
-			return
-
-		var next_path_position = nav.get_next_path_position()
-		var direction = (next_path_position - global_position).normalized()
-		velocity = velocity.lerp(direction * speed, accel * delta)
-
-		if move_flag:
-			move_and_slide()
+		nav.target_position = last_known_player_position
 	else:
-		# Si el jugador no está en el cono o hay una pared, buscar alrededor
-		velocity = Vector2.ZERO
+		# Si el jugador no está en el cono o hay una pared, moverse hacia la última posición conocida
+		if last_known_player_position != Vector2.ZERO:
+			nav.target_position = last_known_player_position
+		else:
+			# Comportamiento errático cuando no hay jugador ni última posición conocida
+			erratic_timer += delta
+			if erratic_timer >= erratic_interval:
+				erratic_timer = 0.0
+				erratic_direction = Vector2(randf_range(-1, 1), randf_range(-1, 1)).normalized()
+				nav.target_position = global_position + erratic_direction * 200  # Mover en una dirección aleatoria
+
+	if nav.is_navigation_finished():
+		last_known_player_position = Vector2.ZERO  # Reiniciar la última posición conocida
+		print("Llegó al último punto conocido.")
+		return
+
+	var next_path_position = nav.get_next_path_position()
+	var direction = (next_path_position - global_position).normalized()
+	velocity = velocity.lerp(direction * speed, accel * delta)
+
+	if move_flag:
 		move_and_slide()
-		print("Buscando alrededor...")
