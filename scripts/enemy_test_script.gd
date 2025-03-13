@@ -1,10 +1,9 @@
 extends CharacterBody2D
 
 # Velocidad y aceleración del enemigo
-var speed = 400
+var speed = 500
 var accel = 7
 var move_flag = true
-var target: Node2D = null
 
 # Referencia al NavigationAgent2D
 @onready var nav = $NavigationAgent2D
@@ -12,8 +11,8 @@ var target: Node2D = null
 # Referencia al jugador
 @onready var player = $"../test_character"
 
-# Referencia al ShapeCast2D
-@onready var shape_cast = $ShapeCast2D
+# Referencia al nodo padre de los RayCast2D
+@onready var raycasts = $Node2D.get_children()
 
 # Referencia al Polygon2D para dibujar el cono de visión
 @onready var vision_cone = $Polygon2D
@@ -33,17 +32,13 @@ var player_in_cone = false
 # Última posición conocida del jugador
 var last_known_player_position: Vector2 = Vector2.ZERO
 
-# Forma del cono (se crea una sola vez)
-var cone_shape: ConvexPolygonShape2D
-
-# Ángulo de rotación del cono de visión
-var cone_rotation_angle = 0.0
-var cone_rotation_speed = 1.0  # Velocidad de rotación del cono
-
 # Variables para el comportamiento errático
 var erratic_timer: float = 0.0
 var erratic_direction: Vector2 = Vector2.ZERO
 var erratic_interval: float = 2.0  # Intervalo de cambio de dirección
+
+# Longitud de los RayCast2D
+var ray_length = 400
 
 func _ready():
 	# Configurar el NavigationAgent2D
@@ -53,40 +48,46 @@ func _ready():
 	await get_tree().process_frame
 	is_nav_ready = true
 	
-	# Configurar el ShapeCast2D con forma de cono
-	setup_cone_shape()
-	
 	# Configurar el Polygon2D para dibujar el cono de visión
 	setup_vision_cone()
-
-func setup_cone_shape():
-	# Crear un ConvexPolygonShape2D para simular un cono (solo una vez)
-	cone_shape = ConvexPolygonShape2D.new()
 	
-	# Definir los puntos del cono
-	var cone_angle = deg_to_rad(45)  # Ángulo de apertura del cono (45 grados a cada lado)
-	var cone_radius = 500.0          # Radio del cono
-	var cone_points = []
-	
-	# Punto inicial (vértice del cono)
-	cone_points.append(Vector2(0, 0))
-	
-	# Puntos del arco del cono
-	for i in range(-45, 46, 5):  # Desde -45 grados hasta 45 grados
-		var angle = deg_to_rad(i)
-		var point = Vector2(cos(angle), sin(angle)) * cone_radius
-		cone_points.append(point)
-	
-	# Asignar los puntos al ConvexPolygonShape2D
-	cone_shape.points = cone_points
-	
-	# Asignar la forma al ShapeCast2D
-	shape_cast.shape = cone_shape
+	# Configurar la longitud de los RayCast2D
+	for raycast in raycasts:
+		raycast.target_position = Vector2(0, -ray_length).rotated(raycast.rotation)
+		print(raycast.name, " - Target Position: ", raycast.target_position)
 
 func setup_vision_cone():
 	# Configurar el Polygon2D para dibujar el cono de visión
-	vision_cone.polygon = cone_shape.points
-	vision_cone.color = Color.YELLOW  # Color inicial del cono (amarillo)
+	vision_cone.color = Color(1, 1, 0, 0.3)  # Amarillo semitransparente
+
+func update_vision_cone():
+	# Crear un arco para el cono de visión
+	var cone_points = []
+	var ray_count = raycasts.size()  # Número de RayCast2D
+
+	# Punto inicial (vértice del cono)
+	cone_points.append(Vector2.ZERO)
+
+	# Calcular los puntos del arco del cono
+	for i in range(ray_count):
+		var raycast = raycasts[i]
+		var ray_direction = raycast.target_position.normalized()
+		var ray_end = ray_direction * ray_length
+		cone_points.append(ray_end)
+
+	# Cerrar el polígono
+	cone_points.append(Vector2.ZERO)
+
+	# Asignar los puntos al Polygon2D
+	vision_cone.polygon = cone_points
+
+func update_raycasts_rotation():
+	# Actualizar la rotación de los RayCast2D según la dirección del enemigo
+	var direction = (nav.get_next_path_position() - global_position).normalized()
+	if direction != Vector2.ZERO:
+		for raycast in raycasts:
+			raycast.rotation = direction.angle() + raycast.rotation  # Mantener el ángulo relativo
+			raycast.target_position = Vector2(0, -ray_length).rotated(raycast.rotation)
 
 func _process(delta):
 	# Manejar la entrada del usuario
@@ -99,25 +100,28 @@ func _physics_process(delta):
 	if not is_nav_ready:
 		return
 		
-	# Verificar si el ShapeCast2D detecta al jugador o una pared
+	# Reiniciar las variables de detección
 	player_detected = false
 	wall_detected = false
 
-	# Forzar la actualización del ShapeCast2D
-	shape_cast.force_shapecast_update()
+	# Actualizar la rotación de los RayCast2D
+	update_raycasts_rotation()
 
-	# Verificar colisiones con el ShapeCast2D
-	if shape_cast.is_colliding():
-		for i in range(shape_cast.get_collision_count()):
-			var collider = shape_cast.get_collider(i)
-			if collider == player:
-				player_detected = true
-				player_in_cone = true
-				print("Jugador detectado!")
-			elif collider is TileMap:  # Verificar si es un TileMap (pared)
+	# Verificar colisiones con los RayCast2D
+	for raycast in raycasts:
+		raycast.force_raycast_update()  # Forzar la actualización del RayCast2D
+		if raycast.is_colliding():
+			var collider = raycast.get_collider()
+			if collider is TileMap:  # Verificar si es un TileMap (pared)
 				wall_detected = true
-				print("Pared detectada!")
+				if not wall_detected:  # Solo imprimir una vez
+					print("Pared detectada!")
 				break  # Salir del bucle si se detecta una pared
+			elif collider == player and not wall_detected:
+				player_detected = true
+				if not player_in_cone:  # Solo imprimir si el jugador no estaba previamente en el cono
+					player_in_cone = true
+					print("Jugador detectado!")
 
 	# Si el jugador no está en el cono, pero estaba previamente, reiniciar la búsqueda
 	if not player_detected and player_in_cone:
@@ -127,27 +131,28 @@ func _physics_process(delta):
 	# Comportamiento del cono de visión
 	if player_in_cone and not wall_detected:
 		# Apuntar el cono hacia el jugador
-		shape_cast.look_at(player.global_position)
 		vision_cone.look_at(player.global_position)
 		
 		# Guardar la última posición conocida del jugador
 		last_known_player_position = player.global_position
 		
 		# Cambiar el color del cono a rojo
-		vision_cone.color = Color.RED
+		vision_cone.color = Color(1, 0, 0, 0.3)  # Rojo semitransparente
 	else:
 		# Si el jugador no está en el cono, mantener la dirección hacia la última posición conocida
 		if last_known_player_position != Vector2.ZERO:
-			shape_cast.look_at(last_known_player_position)
 			vision_cone.look_at(last_known_player_position)
 		else:
-			# Rotar el cono de visión si no hay detección ni última posición conocida
-			cone_rotation_angle += cone_rotation_speed * delta
-			shape_cast.global_rotation = cone_rotation_angle
-			vision_cone.global_rotation = cone_rotation_angle
+			# Alinear el cono de visión con la dirección del movimiento
+			var direction = (nav.get_next_path_position() - global_position).normalized()
+			if direction != Vector2.ZERO:
+				vision_cone.rotation = direction.angle()
 		
 		# Cambiar el color del cono a amarillo
-		vision_cone.color = Color.GREEN
+		vision_cone.color = Color(1, 1, 0, 0.3)  # Amarillo semitransparente
+
+	# Actualizar el cono de visión
+	update_vision_cone()
 
 	# Comportamiento del enemigo
 	if player_in_cone and not wall_detected:
